@@ -98,6 +98,8 @@ Há duas formas equivalentes. Escolha uma para criar este serviço.
 
 ### 4. Preencher as variáveis do configurador
 
+**Se o serviço já foi criado como Docker:** o projeto inclui `Dockerfile` e `.dockerignore` para usar esse mesmo serviço. Em **Settings**, deixe **Root Directory** vazio, **Dockerfile Path** como `Dockerfile`, **Docker Build Context** como `.` e **Docker Command** vazio para usar o comando definido no arquivo. Mantenha o plano **Free** e o caminho de verificação `/api/health`. O container já define o modo de produção, a versão do Node e a porta de execução. Preencha as quatro variáveis do banco e de edição abaixo em **Environment**: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `ADMIN_USERNAME` e `ADMIN_PASSWORD`. Depois use **Manual Deploy > Deploy latest commit**. [Publicação Docker no Render](https://render.com/docs/docker)
+
 Os nomes abaixo são os mesmos definidos em `render.yaml`. No Blueprint, a versão do Node, o modo de produção e a URL do banco já estão preenchidos; na criação manual, inclua todos.
 
 | Variável | Valor a preencher no Render |
@@ -169,6 +171,7 @@ A primeira versão teve 21 verificações do fluxo local e do visual em computad
 - `storage.mjs`: persistência Turso em produção e SQLite no desenvolvimento local.
 - `build.mjs`: verificação antes da publicação.
 - `render.yaml`: serviço Free e variáveis do Render.
+- `Dockerfile` e `.dockerignore`: publicação em um serviço Render já configurado como Docker.
 - `.env.example`: exemplo de configuração, sem credenciais reais.
 
 As ferramentas opcionais WebMCP dependem de suporte no navegador. Sua validação em navegador compatível continua pendente.
