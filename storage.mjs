@@ -1,15 +1,36 @@
 import { mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { INITIAL_DIMENSIONS, SCHEMA_VERSION, normalizeStandards, validateStandards } from './public/model.js';
+import { ATTACHMENT_LIMITS } from './public/model.js';
+import { attachmentMetadata } from './attachments.mjs';
 
 const SCHEMA = [
   'CREATE TABLE IF NOT EXISTS standards (id INTEGER PRIMARY KEY CHECK (id = 1), revision INTEGER NOT NULL, body TEXT NOT NULL, updated_at TEXT, updated_by TEXT)',
   'CREATE TABLE IF NOT EXISTS revisions (revision INTEGER PRIMARY KEY, body TEXT NOT NULL, updated_at TEXT NOT NULL, updated_by TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, created_at TEXT NOT NULL, data TEXT NOT NULL)',
 ];
 const SEED = JSON.stringify(normalizeStandards({ dimensions: INITIAL_DIMENSIONS, clearances: [] }));
 const READ = 'SELECT * FROM standards WHERE id = 1';
 const UPDATE = 'UPDATE standards SET revision = revision + 1, body = ?, updated_at = ?, updated_by = ? WHERE id = 1 AND revision = ?';
 const ARCHIVE = 'INSERT INTO revisions (revision,body,updated_at,updated_by) VALUES (?,?,?,?)';
+const ATTACHMENT_COLUMNS = 'id,name,mime,size,created_at';
+const INSERT_ATTACHMENT = 'INSERT INTO attachments (id,name,mime,size,created_at,data) VALUES (?,?,?,?,?,?)';
+const attachmentArgs = file => [file.id,file.name,file.mime,file.size,file.createdAt,file.data];
+function canonicalizeAttachments(valid, rows) {
+  const available = new Map(rows.map(row => [row.id, attachmentMetadata(row)]));
+  for (const fitting of valid.fittings) fitting.attachments = fitting.attachments.map(ref => {
+    if (!available.has(ref.id)) throw Object.assign(new Error('Um anexo não está disponível neste banco. Envie o arquivo novamente antes de salvar.'), { status: 400 });
+    return available.get(ref.id);
+  });
+  return valid;
+}
+function attachmentLookup(valid) {
+  const ids = [...new Set(valid.fittings.flatMap(fitting => fitting.attachments.map(ref => ref.id)))];
+  return { ids, sql: `SELECT ${ATTACHMENT_COLUMNS} FROM attachments WHERE id IN (${ids.map(() => '?').join(',')})` };
+}
+function enforceAttachmentBudget(size, file) {
+  if (Number(size) + file.size > ATTACHMENT_LIMITS.totalBytes) throw Object.assign(new Error('O espaço de anexos deste configurador atingiu 100 MiB. Revise o acervo antes de enviar novos arquivos.'), { status: 413 });
+}
 
 function snapshot(row) {
   if (!row) throw new Error('Padrão inicial indisponível.');
@@ -64,6 +85,8 @@ export async function createStore({ env = process.env, root, fetchImpl = globalT
           const before = snapshot(read.get());
           if (before.revision !== revision) { database.exec('ROLLBACK'); return { conflict: before }; }
           const finalValid = validateStandards(valid, { existing: before });
+          const lookup = attachmentLookup(finalValid);
+          canonicalizeAttachments(finalValid, lookup.ids.length ? database.prepare(lookup.sql).all(...lookup.ids) : []);
           const serialized = JSON.stringify(finalValid);
           if (update.run(serialized, stamp, username, revision).changes !== 1) throw new Error('Conflito durante o salvamento.');
           archive.run(revision + 1, serialized, stamp, username);
@@ -71,6 +94,19 @@ export async function createStore({ env = process.env, root, fetchImpl = globalT
           database.exec('COMMIT'); return { saved: result };
         } catch (error) { database.exec('ROLLBACK'); throw error; }
       },
+      async uploadAttachment(file) {
+        database.exec('BEGIN IMMEDIATE');
+        try {
+          enforceAttachmentBudget(database.prepare('SELECT COALESCE(SUM(size),0) AS total FROM attachments').get().total, file);
+          database.prepare(INSERT_ATTACHMENT).run(...attachmentArgs(file));
+          database.exec('COMMIT'); return attachmentMetadata({ ...file, created_at: file.createdAt });
+        } catch (error) { database.exec('ROLLBACK'); throw error; }
+      },
+      async readAttachment(id) {
+        const row = database.prepare('SELECT * FROM attachments WHERE id = ?').get(id);
+        return row ? { ...attachmentMetadata(row), data: row.data } : null;
+      },
+      async attachmentInfo(id) { return attachmentMetadata(database.prepare(`SELECT ${ATTACHMENT_COLUMNS} FROM attachments WHERE id = ?`).get(id)); },
       close() { database.close(); },
     };
   }
@@ -147,6 +183,8 @@ export async function createStore({ env = process.env, root, fetchImpl = globalT
           return { conflict: before };
         }
         const finalValid = validateStandards(valid, { existing: before });
+        const lookup = attachmentLookup(finalValid);
+        canonicalizeAttachments(finalValid, lookup.ids.length ? (await run(lookup.sql, lookup.ids)).rows : []);
         const serialized = JSON.stringify(finalValid);
         const changed = await run(UPDATE, [serialized, stamp, username, revision]);
         if (changed.changes !== 1) throw unavailable();
@@ -159,6 +197,24 @@ export async function createStore({ env = process.env, root, fetchImpl = globalT
         throw error;
       } finally { await connection.close().catch(() => {}); }
     },
+    async uploadAttachment(file) {
+      const connection = stream(); let started = false, commitAttempted = false;
+      try {
+        await connection.execute('BEGIN IMMEDIATE'); started = true;
+        enforceAttachmentBudget((await connection.execute('SELECT COALESCE(SUM(size),0) AS total FROM attachments')).rows[0].total, file);
+        await connection.execute(INSERT_ATTACHMENT, attachmentArgs(file), { timeout: 20000 });
+        commitAttempted = true; await connection.execute('COMMIT', [], { close: true });
+        return attachmentMetadata({ ...file, created_at: file.createdAt });
+      } catch (error) {
+        if (started && !commitAttempted) await connection.execute('ROLLBACK', [], { close: true, timeout: 2000 }).catch(() => {});
+        throw error;
+      } finally { await connection.close().catch(() => {}); }
+    },
+    async readAttachment(id) {
+      const row = (await execute('SELECT * FROM attachments WHERE id = ?', [id])).rows[0];
+      return row ? { ...attachmentMetadata(row), data: row.data } : null;
+    },
+    async attachmentInfo(id) { return attachmentMetadata((await execute(`SELECT ${ATTACHMENT_COLUMNS} FROM attachments WHERE id = ?`, [id])).rows[0]); },
     close() {},
   };
 }

@@ -2,7 +2,7 @@
 
 **Padrão Produtivo — biblioteca de ambientes, módulos e fabricação**
 
-Sistema visual de consulta pública dos padrões adotados pela empresa, com edição protegida por um usuário e uma senha fixos definidos pelo responsável. A biblioteca organiza ambientes, grupos, módulos, peças, bordas e métodos produtivos. Todas as medidas, inclusive espessuras, usam **centímetros**.
+Sistema visual de consulta pública dos padrões adotados pela empresa, com edição protegida por um usuário e uma senha fixos definidos pelo responsável. A biblioteca organiza ambientes, grupos, módulos, peças, bordas, ferragens e métodos produtivos. As medidas principais, inclusive espessuras e folgas, usam **centímetros**. Cotas adicionais das fichas técnicas conservam a unidade escolhida no cadastro (mm, cm, graus ou kg); os campos de ângulo e peso identificam sua unidade.
 
 A publicação foi preparada para **Render Free + Turso Free**. O GitHub guarda os arquivos do projeto, o Render coloca o site no ar e o Turso mantém a biblioteca salva quando o Render repousa, reinicia ou recebe uma atualização.
 
@@ -56,6 +56,26 @@ Escolha o critério por peça:
 A largura da fita não entra nesse desconto. O sistema não aplica automaticamente serra, sobremedida ou folgas. Quando o processo exigir outros descontos, registre o critério e informe o corte manual. Exemplo de unidade: painel de 18 mm = **1,8 cm**; fita de 1 mm = **0,1 cm**. As medidas acabadas são preservadas no cadastro.
 
 ## Publicar gratuitamente
+
+### Ferragens, portas e documentos
+
+A aba **Ferragens usadas** organiza dobradiças, sistemas de correr, corrediças, puxadores, articuladores e outras ferragens. Cadastre o nome, marca, modelo/código, aplicação e revisão do manual. Cada ficha tem cinco abas:
+
+- **Identificação:** dados do modelo, situação do padrão e módulos vinculados.
+- **Portas e folgas:** sistema de porta; recobrimento total, central/parcial ou porta embutida; espessuras, caneco, abertura e cinco folgas. Para correr, sobreposição, portas, trilhos, peso, descontos informados e regra de dimensionamento específica.
+- **Cotas técnicas:** descrição da cota, valor, unidade e observação, até 30 cotas por ficha.
+- **Instalação:** instruções e conferências do processo.
+- **Anexos:** PDF, PNG, JPEG e WebP para consultar, abrir e baixar, até 5 MiB por arquivo e 10 anexos por ficha.
+
+Os desenhos seguem o visual Steffens e identificam R (recobrimento), F (folga) e S (sobreposição). São esquemas sem escala. A imagem enviada pelo usuário foi usada como referência de apresentação; suas cotas não foram copiadas como padrões de fabricação. Não há fórmula universal de corte de portas de correr: registre a regra do fabricante e revise o dimensionamento para o modelo usado.
+
+Em cada módulo, abra **Ferragens**, marque as fichas usadas e descreva as quantidades e particularidades de instalação. O botão **Consultar ferragem** abre a ficha vinculada. Um módulo aprovado só pode vincular ferragens aprovadas. Remova os vínculos dos módulos antes de excluir uma ferragem.
+
+Para aprovar uma ficha, informe marca, referência, instalação e conferências. Portas de abrir/correr exigem ficha técnica anexada e cinco folgas definidas. Dobradiças exigem sistema de abrir, tipo/medida de recobrimento e espessuras; sistemas de correr exigem sistema correspondente, sobreposição, quantidades de portas/trilhos e regra de corte. Todas as cotas adicionais precisam de valor e unidade. Isso verifica preenchimento; a revisão técnica continua sendo responsabilidade da empresa.
+
+Os anexos são armazenados em uma tabela separada no mesmo Turso, sem depender do disco do Render. O limite interno do acervo é **100 MiB de arquivos originais**. A codificação de armazenamento ocupa cerca de um terço a mais. Remover o vínculo de uma ficha preserva o arquivo para consulta ao histórico. Uploads ainda não vinculados por um salvamento também ocupam esse espaço. O JSON exportado contém os cadastros e as referências; **baixe os PDFs e imagens separadamente** para ter uma cópia completa. Importar referências de arquivos que não existem no banco exige reenviá-los. A migração preserva medidas, biblioteca e vínculos de clientes antigos.
+
+Os testes usam SQLite e um servidor isolado que simula o protocolo Turso. A gravação no Turso real e o acesso pelo Render dependem das credenciais e do endereço público do serviço; essa verificação permanece pendente.
 
 Use um banco Turso, um repositório GitHub e um serviço Render separados para este configurador. O site de orçamentos permanece como está, na mesma conta Render se isso facilitar a administração.
 
@@ -177,15 +197,16 @@ A senha é verificada no servidor e fica fora dos arquivos públicos. Em produç
 
 Use **Exportar padrão** para guardar uma cópia JSON da biblioteca, das folgas e dos demais dados salvos. Para restaurar, entre como responsável, use **Importar padrão**, confira os cadastros e salve. Arquivos da primeira versão, que contêm somente dimensões e folgas, são aceitos e preservam a biblioteca existente. Os campos antigos continuam no banco e nas cópias para compatibilidade; a interface utiliza as medidas individuais de cada módulo. A exportação contém somente os dados do padrão, sem senhas ou sessões. Guarde exportações regularmente em local seguro.
 
-A atualização para o esquema 2 acrescenta a biblioteca aos bancos da primeira versão sem alterar medidas ou folgas já salvas. Ao salvar, o conteúdo completo e o histórico são gravados na mesma transação. Limites de cadastro: 120 módulos, 40 peças por módulo e 60 métodos; arquivo de importação e solicitação de salvamento de até 2 MB.
+A atualização para o esquema 3 acrescenta ferragens, cotas, anexos e vínculos por módulo, preservando bibliotecas, medidas e folgas das versões anteriores. Ao salvar, o conteúdo completo e o histórico são gravados na mesma transação. Limites de cadastro: 120 módulos, 40 peças por módulo, 60 métodos, 100 ferragens e 30 vínculos de ferragens por módulo; arquivo de importação e solicitação de salvamento de até 2 MB.
 
 ## Verificação e organização
 
-Após a remoção da aba de dimensões gerais, passaram 23 verificações da interface em computador e celular, incluindo navegação, medidas por módulo, peças, bordas, métodos, login, salvamento e preservação dos dados. As rodadas anteriores também verificaram modelo, cálculo de corte, migração, validação, transações e API com biblioteca maior que 64 KB. O protocolo Turso foi verificado com um servidor HTTP local que simula o banco, usando dados separados. **O resultado do deploy e o comportamento com o banco Turso real ainda precisam ser validados.** O build verifica a sintaxe e os arquivos necessários; as verificações locais usam dados separados do banco da empresa.
+Passaram 23 verificações da biblioteca em computador e celular, 13 verificações das novas ferragens e anexos, 16 de migração/API, 13 do catálogo/corte e 12 do protocolo remoto simulado. A verificação inclui PDF e imagem enviados pelo site, cadastro/vínculos, folgas e cotas, proteção de edição, preservação dos arquivos após reiniciar e operações remotas com confirmação perdida. Os testes usaram dados separados. **O resultado do deploy e o comportamento com o banco Turso real ainda precisam ser validados.** O build verifica a sintaxe e os arquivos necessários.
 
 - `public/`: interface, estilos, catálogo de ambientes/módulos/métodos e validação dos cadastros.
 - `server.mjs`: servidor e autenticação.
 - `storage.mjs`: persistência Turso em produção e SQLite no desenvolvimento local.
+- `attachments.mjs`: validação dos arquivos e metadados de anexos.
 - `build.mjs`: verificação antes da publicação.
 - `render.yaml`: serviço Free e variáveis do Render.
 - `Dockerfile` e `.dockerignore`: publicação em um serviço Render já configurado como Docker.

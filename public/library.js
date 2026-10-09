@@ -1,5 +1,5 @@
 import { ENVIRONMENTS, MODULE_CATALOG, METHOD_CATALOG, EDGE_SIDES, PRODUCTION_STEPS, createBlankPiece } from './catalog.js?v=2';
-import { LIMITS, pieceCutDimensions } from './model.js?v=2';
+import { LIMITS, pieceCutDimensions } from './model.js?v=3.1';
 
 const STATUS = [['draft', 'Pendente'], ['review', 'Em conferência'], ['approved', 'Aprovado']];
 const GRAIN = [['pending', 'A definir'], ['horizontal', 'Horizontal'], ['vertical', 'Vertical'], ['none', 'Sem sentido obrigatório']];
@@ -93,7 +93,7 @@ function moduleDrawing(module) {
   return svg;
 }
 
-export function createLibraryController({ getData, canEdit, isSaving, onChange, requestEdit, notice, confirmAction, onNavigate }) {
+export function createLibraryController({ getData, canEdit, isSaving, onChange, requestEdit, notice, confirmAction, onNavigate, onOpenFitting }) {
   const container = document.querySelector('#library-view');
   const navigation = document.querySelector('#environment-nav');
   if (!container) throw new Error('O contêiner da biblioteca não foi encontrado.');
@@ -238,7 +238,7 @@ export function createLibraryController({ getData, canEdit, isSaving, onChange, 
     if (modules().length >= LIMITS.modules) { notice('A biblioteca comporta até ' + LIMITS.modules + ' módulos. Remova um cadastro antes de adicionar outro.'); return; }
     showForm('Cadastrar módulo', [{ key: 'environmentId', label: 'Ambiente', options: ENVIRONMENTS.map(entry => [entry.id, titleOf(entry)]), value: state.environmentId || ENVIRONMENTS[0]?.id }, { key: 'subgroup', label: 'Grupo / subgrupo', value: state.subgroup || '', maxLength: 80 }, { key: 'title', label: 'Nome do módulo', maxLength: 80 }, { key: 'kind', label: 'Tipo do módulo', options: [['base', 'Balcão / módulo inferior'], ['tall', 'Armário alto'], ['upper', 'Módulo superior'], ['drawers', 'Gaveteiro'], ['panel', 'Painel / revestimento'], ['top', 'Tampo / bancada'], ['piece', 'Peça individual']] }], values => {
       if (!values.title || !values.subgroup) { notice('Informe o nome e o grupo do módulo.'); return false; }
-      const record = { id: 'custom_' + crypto.randomUUID(), environmentId: values.environmentId, subgroup: values.subgroup, title: values.title, kind: values.kind, family: { base: 'balcao', tall: 'armario', upper: 'superior', drawers: 'gaveteiro' }[values.kind] || 'none', status: 'draft', width: null, height: null, depth: null, thickness: null, material: '', finish: '', hardware: '', methodId: '', assembly: '', quality: '', notes: '', pieces: [] };
+      const record = { id: 'custom_' + crypto.randomUUID(), environmentId: values.environmentId, subgroup: values.subgroup, title: values.title, kind: values.kind, family: { base: 'balcao', tall: 'armario', upper: 'superior', drawers: 'gaveteiro' }[values.kind] || 'none', status: 'draft', width: null, height: null, depth: null, thickness: null, material: '', finish: '', hardware: '', hardwareIds: [], methodId: '', assembly: '', quality: '', notes: '', pieces: [] };
       if (change(draft => draft.modules.push(record))) { openModule(record.id); return true; } return false;
     });
   }
@@ -268,7 +268,7 @@ export function createLibraryController({ getData, canEdit, isSaving, onChange, 
     else if (state.tab === 'measures') renderMeasures(content, record);
     else if (state.tab === 'pieces') renderPieces(content, record);
     else if (state.tab === 'edges') renderModuleEdges(content, record);
-    else if (state.tab === 'hardware') add(content, el('h3', '', 'Ferragens e acessórios'), hint('Descreva marca, modelo, quantidade, aplicação e restrições. Não há ferragem padrão presumida para este módulo.'), field('Ferragens do módulo', record.hardware, value => updateModule(record.id, 'hardware', value), { textarea: true, wide: true, rows: 8, maxLength: 2000, placeholder: 'Ex.: dobradiças, corrediças, puxadores, suportes e fixações, com referências completas.' }));
+    else if (state.tab === 'hardware') renderHardware(content, record);
     else if (state.tab === 'assembly') renderAssembly(content, record);
     else if (state.tab === 'quality') renderQuality(content, record);
   }
@@ -360,11 +360,37 @@ export function createLibraryController({ getData, canEdit, isSaving, onChange, 
     const list = [['', 'Método a definir'], ...methods().map(method => [method.id, method.title + ' · ' + (STATUS.find(pair => pair[0] === method.status)?.[1] || 'Pendente')])];
     add(target, field('Método produtivo', record.methodId, value => updateModule(record.id, 'methodId', value), { options: list }), button('Consultar métodos produtivos', () => { state.methodId = record.methodId || null; navigate('methods'); }, 'button secondary small'), field('Instruções de montagem do módulo', record.assembly, value => updateModule(record.id, 'assembly', value), { textarea: true, wide: true, rows: 8, maxLength: 8000, placeholder: 'Descreva ordem de montagem, posicionamentos, fixações, cuidados e pontos que precisam de conferência.' }));
   }
+  function renderHardware(target, record) {
+    const fittingRecords = Array.isArray(data().fittings) ? data().fittings : [];
+    add(target, el('h3', '', 'Ferragens e acessórios'), hint('Vincule as ferragens cadastradas e descreva quantidade, aplicação e fixações específicas deste módulo. Os vínculos não substituem as instruções de montagem.'), field('Ferragens do módulo — quantidades e observações', record.hardware, value => updateModule(record.id, 'hardware', value), { textarea: true, wide: true, rows: 6, maxLength: 2000, placeholder: 'Descreva as quantidades, posições e restrições. Use “Não se aplica” quando adequado.' }), button('Abrir catálogo de ferragens usadas', () => onNavigate('fittings'), 'button secondary'));
+    if (!fittingRecords.length) { target.append(empty('Nenhuma ferragem cadastrada', 'Cadastre as ferragens usadas pela empresa, com modelo e documentação, antes de vinculá-las aos módulos.')); return; }
+    const linked = new Set(record.hardwareIds || []);
+    const search = el('input', 'library-search'); search.type = 'search'; search.placeholder = 'Buscar ferragem por nome, marca ou referência'; search.setAttribute('aria-label', 'Buscar ferragem para vincular ao módulo');
+    const list = el('div', 'module-fitting-links');
+    function populate() {
+      const found = fittingRecords.filter(fitting => normalized([fitting.title, fitting.brand, fitting.reference].join(' ')).includes(normalized(search.value)));
+      list.replaceChildren();
+      for (const fitting of found) {
+        const row = el('article', 'module-fitting-link'); const label = el('label', 'module-fitting-choice'); const checkbox = el('input'); checkbox.type = 'checkbox'; checkbox.checked = linked.has(fitting.id); checkbox.disabled = !editable();
+        checkbox.onchange = () => {
+          if (checkbox.checked && linked.size >= 30) { checkbox.checked = false; notice('Cada módulo pode vincular até 30 ferragens.'); return; }
+          const next = new Set(linked); if (checkbox.checked) next.add(fitting.id); else next.delete(fitting.id);
+          if (change(draft => { const module = draft.modules.find(item => item.id === record.id); if (module) module.hardwareIds = [...next]; })) { linked.clear(); for (const id of next) linked.add(id); }
+          else checkbox.checked = linked.has(fitting.id);
+        };
+        add(label, checkbox, add(el('span', 'module-fitting-name'), el('strong', '', fitting.title), el('small', '', [fitting.brand || 'Marca pendente', fitting.reference || 'Referência pendente'].join(' · '))));
+        add(row, label, statusBadge(fitting.status), button('Consultar ferragem', () => { if (onOpenFitting) onOpenFitting(fitting.id); else onNavigate('fittings', fitting.id); }, 'button quiet small')); list.append(row);
+      }
+      if (!found.length) list.append(empty('Nenhuma ferragem encontrada', 'Tente outro nome, marca ou referência.'));
+    }
+    search.oninput = populate; populate(); add(target, el('h4', '', 'Ferragens vinculadas ao módulo'), hint('Marque os cadastros usados neste módulo. Um módulo aprovado só pode vincular ferragens aprovadas.'), search, list);
+  }
   function renderQuality(target, record) {
     add(target, el('h3', '', 'Conferência e liberação'), hint('A situação indica a liberação do cadastro pelo responsável. O sistema não aprova engenharia nem fabrica a partir de campos incompletos.'), field('Critérios de conferência deste módulo', record.quality, value => updateModule(record.id, 'quality', value), { textarea: true, wide: true, rows: 8, maxLength: 8000, placeholder: 'Defina o que conferir: medidas, esquadro, material, bordas, veio, ferragens, acabamento e montagem.' }), field('Situação do cadastro', record.status, value => updateModule(record.id, 'status', value), { options: STATUS }));
     const checklist = el('ul', 'module-checklist');
     const completeEdges = piece => SIDES.every(side => piece.edges?.[side.id]?.mode === 'none' || piece.edges?.[side.id]?.mode === 'band' && piece.edges[side.id].material.trim() && piece.edges[side.id].thickness > 0 && piece.edges[side.id].width > 0 && piece.edges[side.id].width >= piece.thickness);
     const checks = [['Medidas obrigatórias do módulo informadas', ['width', 'height', record.kind === 'piece' ? 'thickness' : 'depth'].every(key => record[key] > 0)], ['Material principal informado', !!record.material.trim()], ['Peças cadastradas', record.pieces.length > 0], ['Peças com quantidade, medidas, espessura e material', record.pieces.length > 0 && record.pieces.every(piece => piece.quantity > 0 && Number.isInteger(piece.quantity) && piece.width > 0 && piece.height > 0 && piece.thickness > 0 && piece.material.trim())], ['Veio, bordas e corte definidos nas peças', record.pieces.length > 0 && record.pieces.every(piece => piece.grain !== 'pending' && completeEdges(piece) && calculatePieceCut(piece).width > 0 && calculatePieceCut(piece).height > 0)], ['Método produtivo aprovado vinculado', methodById(record.methodId)?.status === 'approved'], ['Ferragens descritas', !!record.hardware.trim()], ['Montagem descrita', !!record.assembly.trim()], ['Critérios de conferência descritos', !!record.quality.trim()]];
+    if ((record.hardwareIds || []).length) checks.push(['Ferragens vinculadas aprovadas', record.hardwareIds.every(id => data().fittings?.find(item => item.id === id)?.status === 'approved')]);
     for (const [label, complete] of checks) add(checklist, el('li', complete ? 'check-complete' : 'check-pending', (complete ? '✓ ' : '○ ') + label));
     add(target, el('h4', '', 'Resumo do preenchimento'), checklist, hint('Este resumo orienta o preenchimento. A validação definitiva ocorre ao salvar; a aprovação é uma decisão do responsável.'));
   }

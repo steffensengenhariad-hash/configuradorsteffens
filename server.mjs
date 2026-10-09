@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { randomBytes, scryptSync, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { validateStandards } from './public/model.js';
+import { validateStandards, ATTACHMENT_ID_PATTERN } from './public/model.js';
 import { createStore } from './storage.mjs';
+import { prepareAttachment, attachmentResponseBytes } from './attachments.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const production = process.env.NODE_ENV === 'production';
@@ -21,9 +22,10 @@ const derive = promisify(scrypt);
 const sessions = new Map();
 const failedLogins = new Map();
 let verifyingLogins = 0;
+let activeUploads = 0;
 const SESSION_MS = 8 * 60 * 60 * 1000;
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
-const assets = new Map(['index.html','app.js','model.js','catalog.js','library.js','styles.css','favicon.svg'].map(name => [name, readFileSync(join(root, 'public', name))]));
+const assets = new Map(['index.html','app.js','model.js','catalog.js','library.js','fittings.js','styles.css','favicon.svg'].map(name => [name, readFileSync(join(root, 'public', name))]));
 
 function respond(res, status, value, extra = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extra });
@@ -65,10 +67,33 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   if (production) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
   try {
-    const path = new URL(req.url, 'http://localhost').pathname;
+    const url = new URL(req.url, 'http://localhost'), path = url.pathname;
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method) && !sameOrigin(req)) return respond(res, 403, { error: 'Origem da solicitação não autorizada.' });
     if (req.method === 'GET' && path === '/api/health') return respond(res, 200, { ok: true });
     if (req.method === 'GET' && path === '/api/standards') return respond(res, 200, await store.read());
+    if (req.method === 'POST' && path === '/api/attachments') {
+      if (!session(req)) return respond(res, 401, { error: 'Entre com usuário e senha para anexar arquivos.' });
+      if (activeUploads >= 2) return respond(res, 503, { error: 'Há arquivos sendo enviados. Aguarde e tente novamente.' }, { 'Retry-After': '3' });
+      activeUploads++;
+      try { return respond(res, 201, await store.uploadAttachment(prepareAttachment(await body(req, 8 * 1024 * 1024)))); }
+      finally { activeUploads--; }
+    }
+    const attachmentRoute = /^\/api\/attachments\/([^/]+)(\/info)?$/.exec(path);
+    if (['GET','HEAD'].includes(req.method) && attachmentRoute) {
+      const id = attachmentRoute[1];
+      if (!ATTACHMENT_ID_PATTERN.test(id)) return respond(res, 404, { error: 'Anexo não encontrado.' });
+      if (attachmentRoute[2]) {
+        const info = await store.attachmentInfo(id);
+        return respond(res, info ? 200 : 404, info || { error: 'Anexo não encontrado.' });
+      }
+      const file = await store.readAttachment(id);
+      if (!file) return respond(res, 404, { error: 'Anexo não encontrado.' });
+      const bytes = attachmentResponseBytes(file);
+      res.writeHead(200, { 'Content-Type': file.mime, 'Content-Length': bytes.length, 'Cache-Control': 'no-store',
+        'Content-Security-Policy': "sandbox; default-src 'none'; frame-ancestors 'none'",
+        'Content-Disposition': `${url.searchParams.get('download') === '1' ? 'attachment' : 'inline'}; filename="anexo.${file.name.split('.').at(-1)}"; filename*=UTF-8''${encodeURIComponent(file.name)}` });
+      return res.end(req.method === 'HEAD' ? undefined : bytes);
+    }
     if (req.method === 'GET' && path === '/api/session') {
       const auth = session(req);
       return respond(res, 200, { authenticated: !!auth, username: auth?.username || null, editingAvailable: !!passwordHash && !!username });
@@ -122,7 +147,7 @@ const server = http.createServer(async (req, res) => {
     if (!error.status) console.error('Falha no atendimento:', error.message);
   }
 });
-server.requestTimeout = 15000;
+server.requestTimeout = 45000;
 server.headersTimeout = 10000;
 server.listen(port, host, () => console.log(`Configurador disponível em http://${host}:${port}`));
 const cleanup = setInterval(() => { for (const [token, record] of sessions) if (record.expires <= Date.now()) sessions.delete(token); for (const [source, attempts] of failedLogins) if (attempts.until <= Date.now()) failedLogins.delete(source); }, 60000);

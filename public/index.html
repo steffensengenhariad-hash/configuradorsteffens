@@ -7,8 +7,8 @@
   <meta name="description" content="Biblioteca produtiva Steffens Móveis: ambientes, grupos, módulos, peças, fitas de borda, ferragens e métodos de fabricação.">
   <title>Configurador de Dimensões Steffens Móveis | Padrão Produtivo</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=2">
-  <script type="module" src="/app.js?v=2.1"></script>
+  <link rel="stylesheet" href="/styles.css?v=3.1">
+  <script type="module" src="/app.js?v=3.1"></script>
 </head>
 <body>
   <a class="skip-link" href="#content">Ir para o configurador</a>
@@ -18,6 +18,7 @@
     <nav class="primary-nav" aria-label="Padrões">
       <button class="nav-button active" data-view="catalog" aria-current="page"><span class="nav-icon">▦</span><span>Ambientes e módulos<small>Grupos e subgrupos</small></span></button>
       <button class="nav-button" data-view="edges"><span class="nav-icon">▧</span><span>Peças e bordas<small>Face, sentido e acabamento</small></span></button>
+      <button class="nav-button" data-view="fittings"><span class="nav-icon">⚙</span><span>Ferragens usadas<small>Portas, folgas e manuais</small></span></button>
       <button class="nav-button" data-view="methods"><span class="nav-icon">☷</span><span>Métodos produtivos<small>Etapas e conferência</small></span></button>
       <button class="nav-button" data-view="clearances"><span class="nav-icon">↔</span><span>Folgas padrão<small>Encaixes e aplicações</small></span></button>
     </nav>
@@ -31,6 +32,7 @@
       <div class="page-heading"><div><div class="eyebrow">PADRÃO PRODUTIVO · STEFFENS MÓVEIS</div><h1>Configurador de Dimensões</h1><p class="page-subtitle">Do ambiente à peça. Um lugar para consultar, definir e conferir a fabricação.</p></div><div class="mode-badge" id="mode-badge"><span aria-hidden="true">◉</span> Modo consulta</div></div>
       <div class="notice" id="notice" hidden role="status"></div>
       <section id="library-view" aria-label="Biblioteca de ambientes e fabricação"></section>
+      <section id="fittings-view" hidden aria-label="Ferragens usadas e sistemas de portas"></section>
       <section id="clearances-view" class="panel clearances-panel" hidden aria-label="Folgas padrão">
         <div class="panel-heading"><div><h2>Folgas padrão</h2><p>Medidas de folga por aplicação, em centímetros.</p></div><button id="add-clearance" class="button dark" hidden>+ Adicionar folga</button></div>
         <div id="clearance-list"></div>

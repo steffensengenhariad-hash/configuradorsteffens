@@ -1,4 +1,5 @@
 .git
+work
 node_modules
 .env
 .env.*
