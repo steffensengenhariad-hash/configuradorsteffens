@@ -20,8 +20,8 @@ Repositório desta publicação: [configuradorsteffens](https://github.com/steff
 - Desenho interativo da face A com as quatro bordas, material, espessura e largura da fita de cada lado.
 - 8 métodos sugeridos em rascunho, cadastro de novos métodos e guia de 9 etapas produtivas.
 - Situações pendente, em conferência e aprovado; aprovação bloqueada quando faltam os dados obrigatórios.
-- Ilustrações de balcão, armário, superior, gaveteiro e moldura, com cotas A a K clicáveis.
-- Lista das 11 medidas da referência e seleção por tipo de módulo.
+- Ilustrações esquemáticas por tipo: balcão, armário, superior, gaveteiro, painel, tampo e peça individual.
+- Dimensões externas e espessura cadastradas diretamente em cada módulo.
 - Consulta de folgas por aplicação; cadastro, edição e remoção para o responsável.
 - Login, sessão de até 8 horas, botão de saída e proteção das alterações no servidor.
 - Salvamento compartilhado, com revisão para detectar conflitos entre sessões.
@@ -30,13 +30,13 @@ Repositório desta publicação: [configuradorsteffens](https://github.com/steff
 - Interface adaptada para computador e celular.
 - Arquivo `render.yaml` configurado com o plano `free` e banco externo Turso.
 
-As 11 medidas gerais iniciais foram transcritas da imagem fornecida pelo usuário. A lista de folgas começa vazia. Os módulos, composições de peças e métodos são modelos para preenchimento; começam **pendentes**, com quantidades e medidas vazias. Esses modelos não equivalem aos padrões aprovados da Steffens Móveis. As ilustrações são esquemáticas, sem escala. O ambiente Mezanino organiza mobiliário; não define a estrutura do piso.
+A lista de folgas começa vazia. Os módulos, composições de peças e métodos são modelos para preenchimento; começam **pendentes**, com quantidades e medidas vazias. Esses modelos não equivalem aos padrões aprovados da Steffens Móveis. As dimensões são definidas no cadastro individual de cada módulo. As ilustrações são esquemáticas, sem escala. O ambiente Mezanino organiza mobiliário; não define a estrutura do piso.
 
 ## Consultar e definir o padrão
 
 1. Abra **Ambientes e módulos**, escolha um ambiente e depois o grupo e o módulo. Use a busca para localizar diretamente um módulo ou uma peça.
 2. Consulte as sete abas do módulo. Campos vazios representam dados pendentes. Para cadastrar padrões reais, entre em **Editar padrões** com o acesso definido pela empresa.
-3. Em **Medidas**, informe as dimensões específicas do módulo. A base A–K permanece separada; o botão de cópia, quando aplicável, preenche apenas altura/profundidade depois da sua confirmação.
+3. Em **Medidas**, informe largura, altura, profundidade e espessura específicas do módulo. As medidas de um módulo não preenchem outros cadastros automaticamente.
 4. Em **Peças**, confira a composição sugerida, remova o que não se aplica e adicione as peças reais. Defina quantidades, medidas acabadas, espessuras, materiais e orientação do veio.
 5. Em **Bordas**, selecione cada peça e identifique seus lados. A numeração da face A é fixa: **L1 superior, L2 direita, L3 inferior e L4 esquerda**. Alterar o veio não muda a numeração. Cada lado pode estar a definir, sem fita ou com fita.
 6. Em **Métodos produtivos**, revise a sequência sugerida ou cadastre o método usado pela empresa. Preencha etapas e conferências antes de aprová-lo. Em **Montagem** do módulo, vincule esse método e descreva a montagem específica.
@@ -54,22 +54,6 @@ Escolha o critério por peça:
 - **A definir:** mantém o corte pendente.
 
 A largura da fita não entra nesse desconto. O sistema não aplica automaticamente serra, sobremedida ou folgas. Quando o processo exigir outros descontos, registre o critério e informe o corte manual. Exemplo de unidade: painel de 18 mm = **1,8 cm**; fita de 1 mm = **0,1 cm**. As medidas acabadas são preservadas no cadastro.
-
-## Medidas iniciais
-
-| Cota | Aplicação | Valor (cm) |
-|---|---|---:|
-| A | Balcões — altura | 70 |
-| B | Balcões — profundidade | 55 |
-| C | Armários — altura | 160 |
-| D | Armários — profundidade | 55 |
-| E | Superiores — altura | 50 |
-| F | Superiores — profundidade | 35 |
-| G | Gaveteiros volantes — altura | 66 |
-| H | Tampo — avanço | 2 |
-| I | Rodapés — recuo | 2 |
-| J | Rodapés — altura | 5 |
-| K | Moldura de engrossamento — profundidade | 7 |
 
 ## Publicar gratuitamente
 
@@ -151,7 +135,7 @@ Em produção, o servidor exige as credenciais Turso. Se o banco estiver indispo
 ### 5. Conferir a publicação
 
 1. Aguarde o estado **Live** e abra o endereço `.onrender.com` do novo serviço.
-2. Confira a biblioteca pública de 12 ambientes, abra um grupo e um módulo e consulte as sete abas. Confira também as 11 dimensões gerais.
+2. Confira a biblioteca pública de 12 ambientes, abra um grupo e um módulo e consulte as sete abas, incluindo as medidas individuais do módulo.
 3. Entre em **Editar padrões** com o acesso escolhido no painel.
 4. Cadastre um módulo de teste ou altere uma medida, clique em **Salvar padrão** e confirme os valores em outro navegador ou dispositivo. Teste uma peça com as quatro bordas e confira a medida de corte.
 5. Reinicie apenas o serviço deste configurador no Render e confira que a medida continua salva.
@@ -191,13 +175,13 @@ Se outra sessão salvar primeiro, o configurador detecta a revisão diferente e 
 
 A senha é verificada no servidor e fica fora dos arquivos públicos. Em produção, a sessão usa cookie `HttpOnly`, `SameSite=Strict` e `Secure`. Reiniciar ou repousar o serviço encerra as sessões; os padrões continuam guardados no Turso.
 
-Use **Exportar padrão** para guardar uma cópia JSON das dimensões, folgas, módulos, peças, bordas e métodos salvos. Para restaurar, entre como responsável, use **Importar padrão**, confira os cadastros e salve. Arquivos da primeira versão, que contêm somente dimensões e folgas, são aceitos e preservam a biblioteca existente. A exportação contém somente os dados do padrão, sem senhas ou sessões. Guarde exportações regularmente em local seguro.
+Use **Exportar padrão** para guardar uma cópia JSON da biblioteca, das folgas e dos demais dados salvos. Para restaurar, entre como responsável, use **Importar padrão**, confira os cadastros e salve. Arquivos da primeira versão, que contêm somente dimensões e folgas, são aceitos e preservam a biblioteca existente. Os campos antigos continuam no banco e nas cópias para compatibilidade; a interface utiliza as medidas individuais de cada módulo. A exportação contém somente os dados do padrão, sem senhas ou sessões. Guarde exportações regularmente em local seguro.
 
 A atualização para o esquema 2 acrescenta a biblioteca aos bancos da primeira versão sem alterar medidas ou folgas já salvas. Ao salvar, o conteúdo completo e o histórico são gravados na mesma transação. Limites de cadastro: 120 módulos, 40 peças por módulo e 60 métodos; arquivo de importação e solicitação de salvamento de até 2 MB.
 
 ## Verificação e organização
 
-Esta versão passou em 24 verificações da interface em computador e celular, 13 verificações do modelo e cálculo de corte, 15 testes de migração/validação/transações e um teste da API com biblioteca maior que 64 KB. O protocolo Turso passou em 10 verificações com um servidor HTTP local que simula o banco, usando dados separados. **O resultado do deploy e o comportamento com o banco Turso real ainda precisam ser validados.** O build verifica a sintaxe e os arquivos necessários; nenhum teste escreveu no banco da empresa.
+Após a remoção da aba de dimensões gerais, passaram 23 verificações da interface em computador e celular, incluindo navegação, medidas por módulo, peças, bordas, métodos, login, salvamento e preservação dos dados. As rodadas anteriores também verificaram modelo, cálculo de corte, migração, validação, transações e API com biblioteca maior que 64 KB. O protocolo Turso foi verificado com um servidor HTTP local que simula o banco, usando dados separados. **O resultado do deploy e o comportamento com o banco Turso real ainda precisam ser validados.** O build verifica a sintaxe e os arquivos necessários; as verificações locais usam dados separados do banco da empresa.
 
 - `public/`: interface, estilos, catálogo de ambientes/módulos/métodos e validação dos cadastros.
 - `server.mjs`: servidor e autenticação.

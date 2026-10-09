@@ -8,7 +8,7 @@
   <title>Configurador de Dimensões Steffens Móveis | Padrão Produtivo</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css?v=2">
-  <script type="module" src="/app.js?v=2"></script>
+  <script type="module" src="/app.js?v=2.1"></script>
 </head>
 <body>
   <a class="skip-link" href="#content">Ir para o configurador</a>
@@ -19,20 +19,10 @@
       <button class="nav-button active" data-view="catalog" aria-current="page"><span class="nav-icon">▦</span><span>Ambientes e módulos<small>Grupos e subgrupos</small></span></button>
       <button class="nav-button" data-view="edges"><span class="nav-icon">▧</span><span>Peças e bordas<small>Face, sentido e acabamento</small></span></button>
       <button class="nav-button" data-view="methods"><span class="nav-icon">☷</span><span>Métodos produtivos<small>Etapas e conferência</small></span></button>
-      <button class="nav-button" data-view="dimensions"><span class="nav-icon">◇</span><span>Dimensões gerais<small>Referência A a K</small></span></button>
       <button class="nav-button" data-view="clearances"><span class="nav-icon">↔</span><span>Folgas padrão<small>Encaixes e aplicações</small></span></button>
     </nav>
     <div class="sidebar-caption environment-caption">LINHAS DE AMBIENTES</div>
     <nav id="environment-nav" class="environment-nav" aria-label="Selecionar ambiente"></nav>
-    <div class="sidebar-caption family-caption" hidden>REFERÊNCIA DOS MÓDULOS</div>
-    <nav class="family-nav" hidden aria-label="Selecionar módulo da referência">
-      <button data-family="all" class="active">Visão geral<span>11</span></button>
-      <button data-family="balcao">Balcões e rodapés<span>A · B · H · I · J</span></button>
-      <button data-family="armario">Armários<span>C · D</span></button>
-      <button data-family="superior">Superiores<span>E · F</span></button>
-      <button data-family="gaveteiro">Gaveteiros volantes<span>G</span></button>
-      <button data-family="moldura">Moldura de engrossamento<span>K</span></button>
-    </nav>
     <div class="sidebar-bottom"><span class="access-icon">◈</span><div><strong>Padrão produtivo</strong><span>Consulta aberta · edição protegida</span></div></div>
   </aside>
   <div class="shell">
@@ -41,23 +31,6 @@
       <div class="page-heading"><div><div class="eyebrow">PADRÃO PRODUTIVO · STEFFENS MÓVEIS</div><h1>Configurador de Dimensões</h1><p class="page-subtitle">Do ambiente à peça. Um lugar para consultar, definir e conferir a fabricação.</p></div><div class="mode-badge" id="mode-badge"><span aria-hidden="true">◉</span> Modo consulta</div></div>
       <div class="notice" id="notice" hidden role="status"></div>
       <section id="library-view" aria-label="Biblioteca de ambientes e fabricação"></section>
-      <section id="dimensions-view" hidden aria-label="Dimensões gerais">
-        <div class="workspace">
-          <section class="visual-panel panel">
-            <div class="panel-heading"><div><h2>Dimensões gerais da referência</h2><p>Selecione uma cota. Os padrões de cada módulo são definidos nas abas do ambiente.</p></div><span class="subtle-tag">A — K</span></div>
-            <div class="visual-toolbar"><div class="view-label"><span class="cube-icon" aria-hidden="true">◇</span> Vista esquemática</div><button id="overview-button" class="button quiet small">Ver todos os módulos</button></div>
-            <div class="drawing-wrap" id="drawing-wrap"><svg id="diagram" viewBox="0 0 900 410" role="group" aria-label="Ilustrações dos módulos com cotas A a K"></svg></div>
-            <div class="drawing-caption"><span><i aria-hidden="true"></i> Cotas interativas</span><span class="drawing-hint">Deslize para ver todos os módulos</span><span>Ilustrações sem escala · valores em cm</span></div>
-            <div class="selected-detail" id="selected-detail"></div>
-            <div class="reference-note"><span aria-hidden="true">ⓘ</span><p>Valores iniciais transcritos da referência enviada. Os padrões e as folgas podem ser ajustados pelo responsável.</p></div>
-          </section>
-          <section class="measure-panel panel" aria-label="Lista de medidas">
-            <div class="panel-heading"><div><h2>Medidas do padrão</h2><p id="measure-count">11 dimensões · centímetros</p></div><span class="subtle-tag">A — K</span></div>
-            <div class="measure-list" id="measure-list"></div>
-            <div class="measure-footer"><span aria-hidden="true">▤</span> Medidas compartilhadas com a equipe</div>
-          </section>
-        </div>
-      </section>
       <section id="clearances-view" class="panel clearances-panel" hidden aria-label="Folgas padrão">
         <div class="panel-heading"><div><h2>Folgas padrão</h2><p>Medidas de folga por aplicação, em centímetros.</p></div><button id="add-clearance" class="button dark" hidden>+ Adicionar folga</button></div>
         <div id="clearance-list"></div>

@@ -1,11 +1,11 @@
-import { MEASURES, INITIAL_DIMENSIONS, validateStandards } from './model.js?v=2';
+import { INITIAL_DIMENSIONS, validateStandards } from './model.js?v=2';
 import { createInitialModules, createInitialMethods } from './catalog.js?v=2';
-import { createLibraryController } from './library.js?v=2';
+import { createLibraryController } from './library.js?v=2.1';
 
 const $ = selector => document.querySelector(selector);
 const all = selector => [...document.querySelectorAll(selector)];
 const format = value => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 10 }).format(value);
-let saved = null, draft = null, authenticated = false, selected = 'A', family = 'all', view = 'catalog', saving = false, toastTimer, clearanceEditingId = null, draftGeneration = 0, refreshRequest = 0;
+let saved = null, draft = null, authenticated = false, view = 'catalog', saving = false, toastTimer, clearanceEditingId = null, draftGeneration = 0, refreshRequest = 0;
 const clone = value => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
 const fields = ['dimensions','clearances','modules','methods'];
 const isDirty = () => !!saved && !!draft && JSON.stringify(fields.map(key => draft[key])) !== JSON.stringify(fields.map(key => saved[key]));
@@ -56,110 +56,12 @@ function confirmAction(title, description, label, action) {
   $('#confirm-dialog').showModal();
 }
 function setView(next) {
-  view = next;
-  $('#dimensions-view').hidden = view !== 'dimensions'; $('#clearances-view').hidden = view !== 'clearances';
-  $('#library-view').hidden = ['dimensions','clearances'].includes(view);
+  view = ['catalog','edges','methods','clearances'].includes(next) ? next : 'catalog';
+  $('#clearances-view').hidden = view !== 'clearances';
+  $('#library-view').hidden = view === 'clearances';
   all('.primary-nav [data-view]').forEach(button => { const active = button.dataset.view === view; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
-  document.querySelector('.family-caption').hidden = view !== 'dimensions'; document.querySelector('.family-nav').hidden = view !== 'dimensions';
-  document.querySelector('.environment-caption').hidden = ['dimensions','clearances'].includes(view); $('#environment-nav').hidden = ['dimensions','clearances'].includes(view);
-  if (!$('#library-view').hidden) library.setView(next);
-}
-function setFamily(next) {
-  family = next; setView('dimensions');
-  if (family !== 'all' && MEASURES.find(m => m.id === selected).family !== family) selected = MEASURES.find(m => m.family === family).id;
-  all('[data-family]').forEach(button => button.classList.toggle('active', button.dataset.family === family));
-  renderMeasures(); renderDiagram(); renderDetail();
-}
-function selectMeasure(code, focus = false) {
-  selected = code;
-  if (family !== 'all' && MEASURES.find(m => m.id === code).family !== family) { family = 'all'; all('[data-family]').forEach(b => b.classList.toggle('active', b.dataset.family === 'all')); renderMeasures(); }
-  all('.measure-row').forEach(row => row.classList.toggle('selected', row.dataset.code === code));
-  renderDiagram(); renderDetail();
-  if (focus && authenticated) $(`#measure-${code}`)?.focus({ preventScroll: true });
-}
-function renderMeasures() {
-  const values = data()?.dimensions || INITIAL_DIMENSIONS;
-  const measures = MEASURES.filter(m => family === 'all' || m.family === family);
-  $('#measure-count').textContent = `${measures.length} ${measures.length === 1 ? 'dimensão' : 'dimensões'} · centímetros`;
-  $('#measure-list').replaceChildren(...measures.map(m => {
-    const row = document.createElement('div'); row.className = `measure-row${selected === m.id ? ' selected' : ''}`; row.dataset.code = m.id;
-    const button = document.createElement('button'); button.className = 'measure-select'; button.type = 'button'; button.setAttribute('aria-label', `${m.id} — ${m.group}, ${m.label}`);
-    button.innerHTML = `<span class="letter">${m.id}</span><span class="measure-name"><strong>${m.group}</strong><span>${m.label}</span></span>`;
-    button.onclick = () => selectMeasure(m.id, true);
-    const input = document.createElement('input'); input.className = 'measure-input'; input.type = 'number'; input.step = 'any'; input.min = m.positive ? '0.0000000001' : '0'; input.id = `measure-${m.id}`; input.value = values[m.id] ?? ''; input.disabled = !authenticated || saving; input.setAttribute('aria-label', `${m.id}: ${m.group} — ${m.label}, em centímetros`);
-    input.onfocus = () => selectMeasure(m.id);
-    input.oninput = () => {
-      draftGeneration++;
-      draft.dimensions[m.id] = input.value === '' ? null : input.valueAsNumber;
-      input.classList.toggle('input-invalid', !input.checkValidity() || !Number.isFinite(draft.dimensions[m.id]));
-      renderDiagram(); renderDetail(); renderDirty();
-    };
-    const unit = document.createElement('span'); unit.className = 'measure-unit'; unit.textContent = 'cm';
-    row.append(button, input, unit); return row;
-  }));
-}
-function renderDetail() {
-  const measure = MEASURES.find(m => m.id === selected); const value = data()?.dimensions[selected] ?? INITIAL_DIMENSIONS[selected];
-  $('#selected-detail').innerHTML = `<span class="letter-large">${selected}</span><div class="detail-text"><strong>${measure.group}</strong><span>${measure.label}</span></div><div class="detail-value">${Number.isFinite(value) ? format(value) : '—'}<small>cm</small></div>`;
-}
-function cabinet(x, y, w, h, depth, kind, activeFamily) {
-  const dx = depth * .65, dy = depth * -.42;
-  const cls = `module ${family !== 'all' && family !== activeFamily ? 'module-faded' : ''} ${MEASURES.find(m => m.id === selected).family === activeFamily ? 'module-active' : ''}`;
-  const front = `<path class="cab-front" d="M${x},${y-h}h${w}v${h}h-${w}Z"/>`;
-  const side = `<path class="cab-side" d="M${x+w},${y-h}l${dx},${dy}v${h}l-${dx},${-dy}Z"/>`;
-  const top = `<path class="cab-top" d="M${x},${y-h}l${dx},${dy}h${w}l-${dx},${-dy}Z"/>`;
-  let details = '';
-  if (kind === 'drawers') {
-    for (let i = 1; i < 4; i++) { const ty = y - h + h * i / 4; details += `<path d="M${x+3},${ty}h${w-6}" stroke="#b29a84" stroke-width="2"/><path d="M${x+w*.36},${ty-h/8}h${w*.28}" stroke="#eae8e0" stroke-width="2.5" stroke-linecap="round"/>`; }
-    details += `<circle cx="${x+9}" cy="${y+5}" r="4" fill="#617082"/><circle cx="${x+w-9}" cy="${y+5}" r="4" fill="#617082"/>`;
-  } else {
-    details += `<path d="M${x+w/2},${y-h+2}v${h-4}" stroke="#a5876e" stroke-width="1.6"/>`;
-    const hy = y - h + h * .26;
-    details += `<path d="M${x+w/2-7},${hy}v15M${x+w/2+7},${hy}v15" stroke="#f0ede5" stroke-width="2.5" stroke-linecap="round"/>`;
-    if (kind === 'tall') {
-      const sh = h * .32;
-      details = `<path d="M${x+2},${y-h+2}h${w-4}v${sh}h-${w-4}Z" fill="#e4e5e6"/><path d="M${x+2},${y-h+sh*.5}h${w-4}M${x+2},${y-h+sh}h${w-4}" stroke="#adb4ba" stroke-width="3"/>${details}`;
-    }
-    if (kind === 'base') details += `<path d="M${x+5},${y-8}h${w-10}v8h-${w-10}Z" fill="#9a8170"/><path d="M${x-4},${y-h-3}h${w+8}" stroke="#485970" stroke-width="5"/>`;
-  }
-  return `<g class="${cls}"><ellipse cx="${x+w*.6+dx*.5}" cy="${y+13}" rx="${w*.58+dx*.4}" ry="8" fill="#d8e0e9" opacity=".5"/>${side}${front}${top}${details}</g>`;
-}
-function dim(code, x1, y1, x2, y2, lx, ly) {
-  const measure = MEASURES.find(m => m.id === code);
-  const faded = family !== 'all' && family !== measure.family ? 'module-faded' : '';
-  const dx = x2-x1, dy = y2-y1, length = Math.hypot(dx,dy) || 1, px = -dy/length*4, py = dx/length*4;
-  return `<g class="dim-hit ${selected === code ? 'selected' : ''} ${faded}" data-code="${code}" role="button" tabindex="0" aria-label="${code} — ${measure.group}: ${measure.label}"><title>${code} — ${measure.group}: ${measure.label}</title><path class="dim-line" d="M${x1},${y1}L${x2},${y2}M${x1-px},${y1-py}L${x1+px},${y1+py}M${x2-px},${y2-py}L${x2+px},${y2+py}"/><rect class="dim-label-bg" x="${lx-14}" y="${ly-14}" width="28" height="28" rx="5"/><text class="dim-label" x="${lx}" y="${ly+5}" text-anchor="middle">${code}</text></g>`;
-}
-function renderDiagram() {
-  const values = data()?.dimensions || INITIAL_DIMENSIONS;
-  const ratio = code => { const n = values[code]; return Number.isFinite(n) && n > 0 ? Math.max(.45,Math.min(1.6,n/INITIAL_DIMENSIONS[code])) : 1; };
-  const bh = 132 * ratio('A'), bd = 48 * ratio('B'), ah = 223 * ratio('C'), ad = 42 * ratio('D'), uh = 64 * ratio('E'), ud = 39 * ratio('F'), gh = 120 * ratio('G');
-  const fy = 305;
-  let html = `<defs><linearGradient id="wood" x1="0" x2="1"><stop stop-color="#bba08a"/><stop offset=".48" stop-color="#c9b09a"/><stop offset="1" stop-color="#b49780"/></linearGradient></defs><path d="M35 333H860" stroke="#e3e9f1" stroke-width="1"/><text x="48" y="40" font-size="11" letter-spacing="2" fill="#9aa8b9" font-family="Segoe UI,Arial">CONFIGURAÇÃO DOS MÓDULOS</text>`;
-  html += cabinet(93, fy, 126, bh, bd, 'base', 'balcao');
-  html += cabinet(97, 127, 115, uh, ud, 'upper', 'superior');
-  html += cabinet(319, fy, 64, gh, 34, 'drawers', 'gaveteiro');
-  html += cabinet(477, fy, 105, ah, ad, 'tall', 'armario');
-  html += `<g class="${family !== 'all' && family !== 'moldura' ? 'module-faded' : ''}"><path d="M685 185l37-24h113l-37 24Z" fill="#b19a83" stroke="#967a63"/><path d="M685 185v20h113v-20M798 185l37-24v20l-37 24" fill="#8c725d" stroke="#78614f"/><path d="M700 184l25-16h91l-25 16Z" fill="#f9fbfd" stroke="#8e7862"/></g>`;
-  html += dim('A', 68, fy-bh, 68, fy, 56, fy-bh/2);
-  html += dim('B', 224, fy+16, 224+bd*.65, fy+16-bd*.42, 247+bd*.4, fy+26);
-  html += dim('E', 78,127-uh,78,127,65,127-uh/2);
-  html += dim('F', 217,138,217+ud*.65,138-ud*.42,242,148);
-  html += dim('G', 414,fy-gh,414,fy,432,fy-gh/2);
-  html += dim('C', 455,fy-ah,455,fy,439,fy-ah/2);
-  html += dim('D', 587,fy+16,587+ad*.65,fy+16-ad*.42,610,fy+26);
-  html += dim('K', 843,164,843,202,859,185);
-  const recess = Math.max(5,Math.min(22,Number(values.I)*4 || 5)), toeHeight = Math.max(12,Math.min(30,Number(values.J)*4 || 12)), overhang = Math.max(5,Math.min(22,Number(values.H)*5 || 5));
-  html += `<g class="${family !== 'all' && family !== 'balcao' ? 'module-faded' : ''}"><rect x="679" y="273" width="128" height="81" rx="6" fill="#f3f6fa" stroke="#e0e6ef"/><path d="M697 285h79v9h-79Z" fill="#526176"/><path d="M${701+overhang} 294v${45-toeHeight}h${55-overhang}v${toeHeight}h-36v-${toeHeight}h-${19-overhang}Z" fill="#c7b19d" stroke="#ad9783"/><text class="module-label" x="744" y="375" text-anchor="middle">Detalhe do balcão</text></g>`;
-  html += dim('H',697,280,701+overhang,280,689,262);
-  html += dim('I',718-recess,348,738,348,716,359);
-  html += dim('J',785,339-toeHeight,785,339,806,327);
-  html += `<text class="module-label" x="155" y="366" text-anchor="middle">Balcão</text><text class="module-label" x="163" y="149" text-anchor="middle">Superior</text><text class="module-label" x="358" y="366" text-anchor="middle">Gaveteiro</text><text class="module-label" x="538" y="366" text-anchor="middle">Armário</text><text class="module-label" x="756" y="236" text-anchor="middle">Moldura</text>`;
-  $('#diagram').innerHTML = html;
-  all('#diagram [data-code]').forEach(hit => {
-    hit.onclick = () => selectMeasure(hit.dataset.code, true);
-    hit.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectMeasure(hit.dataset.code, true); } };
-  });
+  document.querySelector('.environment-caption').hidden = view === 'clearances'; $('#environment-nav').hidden = view === 'clearances';
+  if (!$('#library-view').hidden) library.setView(view);
 }
 function renderClearances() {
   const entries = data()?.clearances || [];
@@ -199,9 +101,9 @@ function render() {
   $('#mode-badge').textContent = authenticated ? '✎ Edição liberada' : '◉ Modo consulta';
   $('#edit-button').hidden = authenticated; $('#edit-button').disabled = !saved;
   $('#logout-button').hidden = !authenticated; $('#import-button').hidden = !authenticated; $('#export-button').disabled = !saved;
-  $('#revision-label').textContent = saved ? `Padrão geral · revisão ${saved.revision}` : 'Carregando padrão…';
-  $('#updated-label').textContent = saved?.updatedAt ? `Atualizado em ${new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(saved.updatedAt))}` : 'Base inicial da referência · sem alterações salvas';
-  renderMeasures(); renderDiagram(); renderDetail(); renderClearances(); renderDirty(); library.render();
+  $('#revision-label').textContent = saved ? `Biblioteca produtiva · revisão ${saved.revision}` : 'Carregando padrão…';
+  $('#updated-label').textContent = saved?.updatedAt ? `Atualizado em ${new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(saved.updatedAt))}` : 'Cadastros iniciais · padrões pendentes de definição';
+  renderClearances(); renderDirty(); library.render();
 }
 function openClearance(id = null) {
   if (saving || !authenticated) return;
@@ -214,7 +116,7 @@ async function save() {
   if (saving || !authenticated) return;
   let valid;
   try { valid = validateStandards(draft, { existing:saved }); } catch (error) { notice(error.message); return; }
-  saving = true; renderDirty(); renderMeasures(); library.render(); notice('');
+  saving = true; renderDirty(); library.render(); notice('');
   try {
     const result = await api('/api/standards', { method:'PUT',body:JSON.stringify({ revision:saved.revision, ...valid }) });
     saved = result; draft = clone(result); toast('Padrão salvo. Os valores já estão disponíveis para todos.');
@@ -248,9 +150,7 @@ function download() {
 }
 all('.primary-nav [data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
 $('#library-home').onclick = () => setView('catalog');
-all('[data-family]').forEach(button => button.onclick = () => setFamily(button.dataset.family));
 all('[data-close]').forEach(button => button.onclick = () => document.getElementById(button.dataset.close).close());
-$('#overview-button').onclick = () => setFamily('all');
 $('#edit-button').onclick = () => { $('#login-error').hidden = true; $('#password').value = ''; $('#login-dialog').showModal(); };
 $('#login-form').onsubmit = async event => {
   event.preventDefault(); $('#login-submit').disabled = true; $('#login-submit').textContent = 'Entrando…'; $('#login-error').hidden = true;
@@ -298,8 +198,7 @@ try {
 
 if (document.modelContext?.registerTool) {
   const lifecycle = new AbortController();
-  const tools = [{name:'read_production_standards',title:'Consultar padrões produtivos',description:'Consultar as dimensões e folgas salvas do padrão Steffens, em centímetros.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:async()=>clone(await api('/api/standards'))},
-    {name:'select_dimension',title:'Selecionar dimensão',description:'Destacar uma cota A a K no configurador, sem alterar o padrão.',inputSchema:{type:'object',properties:{code:{type:'string',enum:MEASURES.map(m=>m.id)}},required:['code'],additionalProperties:false},annotations:{readOnlyHint:false},execute:async input=>{if(!input || !MEASURES.some(m=>m.id===input.code))throw new Error('Cota inválida.');setView('dimensions');selectMeasure(input.code);return{code:selected,value:data().dimensions[selected],unit:'cm'};}}];
+  const tools = [{name:'read_production_standards',title:'Consultar padrões produtivos',description:'Consultar módulos, peças, bordas, métodos e folgas salvos do padrão Steffens, em centímetros.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:async()=>clone(await api('/api/standards'))}];
   for (const tool of tools) { try { void Promise.resolve(document.modelContext.registerTool(tool,{signal:lifecycle.signal})).catch(()=>{}); } catch {} }
   window.addEventListener('pagehide',()=>lifecycle.abort(),{once:true});
 }
