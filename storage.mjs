@@ -1,12 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { INITIAL_DIMENSIONS } from './public/model.js';
+import { INITIAL_DIMENSIONS, SCHEMA_VERSION, normalizeStandards, validateStandards } from './public/model.js';
 
 const SCHEMA = [
   'CREATE TABLE IF NOT EXISTS standards (id INTEGER PRIMARY KEY CHECK (id = 1), revision INTEGER NOT NULL, body TEXT NOT NULL, updated_at TEXT, updated_by TEXT)',
   'CREATE TABLE IF NOT EXISTS revisions (revision INTEGER PRIMARY KEY, body TEXT NOT NULL, updated_at TEXT NOT NULL, updated_by TEXT NOT NULL)',
 ];
-const SEED = JSON.stringify({ dimensions: INITIAL_DIMENSIONS, clearances: [] });
+const SEED = JSON.stringify(normalizeStandards({ dimensions: INITIAL_DIMENSIONS, clearances: [] }));
 const READ = 'SELECT * FROM standards WHERE id = 1';
 const UPDATE = 'UPDATE standards SET revision = revision + 1, body = ?, updated_at = ?, updated_by = ? WHERE id = 1 AND revision = ?';
 const ARCHIVE = 'INSERT INTO revisions (revision,body,updated_at,updated_by) VALUES (?,?,?,?)';
@@ -15,7 +15,7 @@ function snapshot(row) {
   if (!row) throw new Error('Padrão inicial indisponível.');
   const revision = Number(row.revision);
   if (!Number.isSafeInteger(revision)) throw new Error('Revisão do banco inválida.');
-  return { schemaVersion: 1, unit: 'cm', revision, ...JSON.parse(row.body), updatedAt: row.updated_at, updatedBy: row.updated_by };
+  return { schemaVersion: SCHEMA_VERSION, unit: 'cm', revision, ...normalizeStandards(JSON.parse(row.body)), updatedAt: row.updated_at, updatedBy: row.updated_by };
 }
 function unavailable() {
   return Object.assign(new Error('Não foi possível acessar os padrões salvos. Tente novamente; suas alterações ainda não salvas permanecem nesta tela.'), { status: 503 });
@@ -58,11 +58,13 @@ export async function createStore({ env = process.env, root, fetchImpl = globalT
       kind: 'local',
       async read() { return snapshot(read.get()); },
       async save(valid, revision, username) {
-        const serialized = JSON.stringify(valid), stamp = new Date().toISOString();
+        const stamp = new Date().toISOString();
         database.exec('BEGIN IMMEDIATE');
         try {
           const before = snapshot(read.get());
           if (before.revision !== revision) { database.exec('ROLLBACK'); return { conflict: before }; }
+          const finalValid = validateStandards(valid, { existing: before });
+          const serialized = JSON.stringify(finalValid);
           if (update.run(serialized, stamp, username, revision).changes !== 1) throw new Error('Conflito durante o salvamento.');
           archive.run(revision + 1, serialized, stamp, username);
           const result = snapshot(read.get());
@@ -129,7 +131,7 @@ export async function createStore({ env = process.env, root, fetchImpl = globalT
     kind: 'turso',
     async read() { return snapshot((await execute(READ)).rows[0]); },
     async save(valid, revision, username) {
-      const serialized = JSON.stringify(valid), stamp = new Date().toISOString(), connection = stream();
+      const stamp = new Date().toISOString(), connection = stream();
       let started = false, committed = false, commitAttempted = false;
       const deadline = Date.now() + 4500;
       const run = (sql, args = [], options = {}) => {
@@ -144,12 +146,14 @@ export async function createStore({ env = process.env, root, fetchImpl = globalT
           await run('ROLLBACK', [], { close: true }); started = false;
           return { conflict: before };
         }
+        const finalValid = validateStandards(valid, { existing: before });
+        const serialized = JSON.stringify(finalValid);
         const changed = await run(UPDATE, [serialized, stamp, username, revision]);
         if (changed.changes !== 1) throw unavailable();
         await run(ARCHIVE, [revision + 1, serialized, stamp, username]);
         commitAttempted = true;
         await run('COMMIT', [], { close: true }); committed = true;
-        return { saved: { schemaVersion: 1, unit: 'cm', revision: revision + 1, ...valid, updatedAt: stamp, updatedBy: username } };
+        return { saved: { schemaVersion: SCHEMA_VERSION, unit: 'cm', revision: revision + 1, ...finalValid, updatedAt: stamp, updatedBy: username } };
       } catch (error) {
         if (started && !committed && !commitAttempted) await connection.execute('ROLLBACK', [], { close: true, timeout: 2000 }).catch(() => {});
         throw error;

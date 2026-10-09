@@ -23,7 +23,7 @@ const failedLogins = new Map();
 let verifyingLogins = 0;
 const SESSION_MS = 8 * 60 * 60 * 1000;
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
-const assets = new Map(['index.html','app.js','model.js','styles.css','favicon.svg'].map(name => [name, readFileSync(join(root, 'public', name))]));
+const assets = new Map(['index.html','app.js','model.js','catalog.js','library.js','styles.css','favicon.svg'].map(name => [name, readFileSync(join(root, 'public', name))]));
 
 function respond(res, status, value, extra = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extra });
@@ -44,12 +44,12 @@ function sameOrigin(req) {
     return expected ? parsed.origin === new URL(expected).origin : parsed.host === req.headers.host && parsed.protocol === (production ? 'https:' : 'http:');
   } catch { return false; }
 }
-async function body(req) {
+async function body(req, limit = 65536) {
   if (!(req.headers['content-type'] || '').startsWith('application/json')) throw Object.assign(new Error('Envie dados em JSON.'), { status: 415 });
   let chunks = [], size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 65536) throw Object.assign(new Error('A configuração excede o tamanho permitido.'), { status: 413 });
+    if (size > limit) throw Object.assign(new Error('A configuração excede o tamanho permitido.'), { status: 413 });
     chunks.push(chunk);
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
@@ -101,10 +101,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'PUT' && path === '/api/standards') {
       if (!session(req)) return respond(res, 401, { error: 'Entre com usuário e senha para salvar alterações.' });
-      const input = await body(req);
+      const input = await body(req, 2 * 1024 * 1024);
       if (!Number.isSafeInteger(input?.revision) || input.revision < 1) return respond(res, 400, { error: 'Revisão inválida.' });
+      const existing = await store.read();
       let valid;
-      try { valid = validateStandards(input); } catch (error) { return respond(res, 400, { error: error.message }); }
+      try { valid = validateStandards(input, { existing }); } catch (error) { return respond(res, 400, { error: error.message }); }
       const result = await store.save(valid, input.revision, username);
       if (result.conflict) return respond(res, 409, { error: 'O padrão foi atualizado em outra sessão. Recarregue os dados antes de salvar.', current: result.conflict });
       return respond(res, 200, result.saved);

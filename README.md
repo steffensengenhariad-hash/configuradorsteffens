@@ -1,17 +1,25 @@
 # Configurador de Dimensões Steffens Móveis
 
-**Padrão Produtivo — primeira versão**
+**Padrão Produtivo — biblioteca de ambientes, módulos e fabricação**
 
-Sistema de consulta pública das dimensões e folgas adotadas pela empresa, com edição protegida por um usuário e uma senha fixos definidos pelo responsável. Todas as medidas usam **centímetros**.
+Sistema visual de consulta pública dos padrões adotados pela empresa, com edição protegida por um usuário e uma senha fixos definidos pelo responsável. A biblioteca organiza ambientes, grupos, módulos, peças, bordas e métodos produtivos. Todas as medidas, inclusive espessuras, usam **centímetros**.
 
-A publicação foi preparada para **Render Free + Turso Free**. O GitHub guarda os arquivos do projeto, o Render coloca o site no ar e o Turso mantém as medidas e folgas salvas quando o Render repousa, reinicia ou recebe uma atualização.
+A publicação foi preparada para **Render Free + Turso Free**. O GitHub guarda os arquivos do projeto, o Render coloca o site no ar e o Turso mantém a biblioteca salva quando o Render repousa, reinicia ou recebe uma atualização.
 
-Repositório desta publicação: [configuradorsteffens](https://github.com/steffensengenhariad-hash/configuradorsteffens). Depois de enviar os arquivos, use [Abrir publicação no Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fsteffensengenhariad-hash%2Fconfiguradorsteffens) para importar o Blueprint. Preencha o token do Turso e o usuário e senha de edição no painel do Render.
+Repositório desta publicação: [configuradorsteffens](https://github.com/steffensengenhariad-hash/configuradorsteffens). O serviço já criado como Docker pode receber esta atualização usando **Manual Deploy > Deploy latest commit**. O projeto inclui o Dockerfile na raiz. Mantenha o token do Turso e o usuário e senha de edição no painel do Render. O Blueprint continua disponível para uma instalação nova.
 
-**Ainda não há publicação concluída nem conexão validada com um banco Turso real.** Os passos abaixo precisam ser realizados nas contas do responsável e conferidos após o primeiro deploy.
+**A conexão com o Turso real e o resultado no endereço público do Render ainda precisam ser conferidos.** Os testes desta versão usam bases isoladas; nenhuma medida de produção foi alterada durante a verificação.
 
 ## O que está pronto
 
+- 12 ambientes: cozinha, banheiro, dormitório, área gourmet, sala de estar, mezanino, despensa, suíte, hall de entrada, revestimentos, tampos engrossados e peças individuais.
+- 74 módulos organizados por grupos e subgrupos. Suítes reúnem dormitório, banheiro e closet.
+- Busca por ambiente, grupo, módulo e nome de peça; cadastro e remoção de módulos personalizados.
+- Abas individuais: visão geral, medidas, peças, bordas, ferragens, montagem e conferência.
+- Cadastro de peças com quantidade, medidas acabadas, espessura, material, veio e critério de corte.
+- Desenho interativo da face A com as quatro bordas, material, espessura e largura da fita de cada lado.
+- 8 métodos sugeridos em rascunho, cadastro de novos métodos e guia de 9 etapas produtivas.
+- Situações pendente, em conferência e aprovado; aprovação bloqueada quando faltam os dados obrigatórios.
 - Ilustrações de balcão, armário, superior, gaveteiro e moldura, com cotas A a K clicáveis.
 - Lista das 11 medidas da referência e seleção por tipo de módulo.
 - Consulta de folgas por aplicação; cadastro, edição e remoção para o responsável.
@@ -22,7 +30,30 @@ Repositório desta publicação: [configuradorsteffens](https://github.com/steff
 - Interface adaptada para computador e celular.
 - Arquivo `render.yaml` configurado com o plano `free` e banco externo Turso.
 
-As medidas iniciais foram transcritas da imagem fornecida pelo usuário. A lista de folgas começa vazia, para cadastro dos valores reais da empresa. As ilustrações são esquemáticas. Limites, larguras, espessuras e regras de fabricação precisam ser definidos pela empresa antes de incorporados ao sistema.
+As 11 medidas gerais iniciais foram transcritas da imagem fornecida pelo usuário. A lista de folgas começa vazia. Os módulos, composições de peças e métodos são modelos para preenchimento; começam **pendentes**, com quantidades e medidas vazias. Esses modelos não equivalem aos padrões aprovados da Steffens Móveis. As ilustrações são esquemáticas, sem escala. O ambiente Mezanino organiza mobiliário; não define a estrutura do piso.
+
+## Consultar e definir o padrão
+
+1. Abra **Ambientes e módulos**, escolha um ambiente e depois o grupo e o módulo. Use a busca para localizar diretamente um módulo ou uma peça.
+2. Consulte as sete abas do módulo. Campos vazios representam dados pendentes. Para cadastrar padrões reais, entre em **Editar padrões** com o acesso definido pela empresa.
+3. Em **Medidas**, informe as dimensões específicas do módulo. A base A–K permanece separada; o botão de cópia, quando aplicável, preenche apenas altura/profundidade depois da sua confirmação.
+4. Em **Peças**, confira a composição sugerida, remova o que não se aplica e adicione as peças reais. Defina quantidades, medidas acabadas, espessuras, materiais e orientação do veio.
+5. Em **Bordas**, selecione cada peça e identifique seus lados. A numeração da face A é fixa: **L1 superior, L2 direita, L3 inferior e L4 esquerda**. Alterar o veio não muda a numeração. Cada lado pode estar a definir, sem fita ou com fita.
+6. Em **Métodos produtivos**, revise a sequência sugerida ou cadastre o método usado pela empresa. Preencha etapas e conferências antes de aprová-lo. Em **Montagem** do módulo, vincule esse método e descreva a montagem específica.
+7. Preencha ferragens e critérios de conferência. Use “Não se aplica” quando adequado. Confira o resumo da aba **Conferência**, escolha a situação e use **Salvar padrão** para disponibilizar a alteração à equipe.
+
+Um módulo aprovado precisa das medidas obrigatórias e material, peças completas, bordas definidas, método aprovado vinculado, ferragens e instruções de montagem/conferência. Nas peças com fita, a largura da fita deve cobrir a espessura do painel. A liberação do conteúdo é uma decisão do responsável; o sistema verifica preenchimento e consistência, sem substituir a revisão do projeto pela empresa.
+
+### Medida acabada e medida de corte
+
+Escolha o critério por peça:
+
+- **Corte igual à medida acabada:** mantém largura e altura cadastradas.
+- **Descontar espessura das bordas:** largura de corte = largura acabada − espessura de L2 − espessura de L4; altura de corte = altura acabada − espessura de L1 − espessura de L3. Lado sem fita desconta zero; lado pendente impede o cálculo. O resultado precisa ser positivo.
+- **Medida de corte informada:** usa as duas medidas de corte preenchidas pelo responsável.
+- **A definir:** mantém o corte pendente.
+
+A largura da fita não entra nesse desconto. O sistema não aplica automaticamente serra, sobremedida ou folgas. Quando o processo exigir outros descontos, registre o critério e informe o corte manual. Exemplo de unidade: painel de 18 mm = **1,8 cm**; fita de 1 mm = **0,1 cm**. As medidas acabadas são preservadas no cadastro.
 
 ## Medidas iniciais
 
@@ -120,9 +151,9 @@ Em produção, o servidor exige as credenciais Turso. Se o banco estiver indispo
 ### 5. Conferir a publicação
 
 1. Aguarde o estado **Live** e abra o endereço `.onrender.com` do novo serviço.
-2. Confira a consulta pública das 11 medidas.
-3. Entre em **Editar medidas** com o acesso escolhido no painel.
-4. Cadastre uma folga de teste ou altere uma medida, clique em **Salvar padrão** e confirme os valores em outro navegador ou dispositivo.
+2. Confira a biblioteca pública de 12 ambientes, abra um grupo e um módulo e consulte as sete abas. Confira também as 11 dimensões gerais.
+3. Entre em **Editar padrões** com o acesso escolhido no painel.
+4. Cadastre um módulo de teste ou altere uma medida, clique em **Salvar padrão** e confirme os valores em outro navegador ou dispositivo. Teste uma peça com as quatro bordas e confira a medida de corte.
 5. Reinicie apenas o serviço deste configurador no Render e confira que a medida continua salva.
 6. Guarde uma exportação do padrão antes de cadastrar os valores definitivos da empresa.
 
@@ -142,7 +173,7 @@ Os valores e limites foram consultados em **09/10/2026** e podem mudar. O Render
 
 ## Usar localmente
 
-É necessário Node.js 24.15 ou superior na série 24; a primeira versão foi verificada com 24.19.0. Não há dependências externas para instalar.
+É necessário Node.js 24.15 ou superior na série 24; esta versão foi verificada com 24.19.0. Não há dependências externas para instalar.
 
 1. Copie `.env.example` para `.env` na pasta do projeto.
 2. Defina `ADMIN_USERNAME` e `ADMIN_PASSWORD` se quiser editar localmente. Escolha uma senha com pelo menos 12 caracteres.
@@ -160,13 +191,15 @@ Se outra sessão salvar primeiro, o configurador detecta a revisão diferente e 
 
 A senha é verificada no servidor e fica fora dos arquivos públicos. Em produção, a sessão usa cookie `HttpOnly`, `SameSite=Strict` e `Secure`. Reiniciar ou repousar o serviço encerra as sessões; os padrões continuam guardados no Turso.
 
-Use **Exportar padrão** para guardar uma cópia JSON dos valores salvos. Para restaurar, entre como responsável, use **Importar padrão**, confira as medidas e salve. A exportação contém somente os dados do padrão, sem senhas ou sessões. Guarde exportações regularmente em local seguro: elas ajudam a recuperar os valores se o banco for excluído ou o acesso à conta for perdido.
+Use **Exportar padrão** para guardar uma cópia JSON das dimensões, folgas, módulos, peças, bordas e métodos salvos. Para restaurar, entre como responsável, use **Importar padrão**, confira os cadastros e salve. Arquivos da primeira versão, que contêm somente dimensões e folgas, são aceitos e preservam a biblioteca existente. A exportação contém somente os dados do padrão, sem senhas ou sessões. Guarde exportações regularmente em local seguro.
+
+A atualização para o esquema 2 acrescenta a biblioteca aos bancos da primeira versão sem alterar medidas ou folgas já salvas. Ao salvar, o conteúdo completo e o histórico são gravados na mesma transação. Limites de cadastro: 120 módulos, 40 peças por módulo e 60 métodos; arquivo de importação e solicitação de salvamento de até 2 MB.
 
 ## Verificação e organização
 
-A primeira versão teve 21 verificações do fluxo local e do visual em computador e celular. A adaptação de persistência remota passou em 10 verificações com um servidor HTTP local que simula o protocolo Turso, usando um banco separado; **o deploy e o comportamento com o banco Turso real ainda precisam ser validados**. O build de publicação verifica a sintaxe e os arquivos necessários.
+Esta versão passou em 24 verificações da interface em computador e celular, 13 verificações do modelo e cálculo de corte, 15 testes de migração/validação/transações e um teste da API com biblioteca maior que 64 KB. O protocolo Turso passou em 10 verificações com um servidor HTTP local que simula o banco, usando dados separados. **O resultado do deploy e o comportamento com o banco Turso real ainda precisam ser validados.** O build verifica a sintaxe e os arquivos necessários; nenhum teste escreveu no banco da empresa.
 
-- `public/`: interface, estilos e modelo de medidas.
+- `public/`: interface, estilos, catálogo de ambientes/módulos/métodos e validação dos cadastros.
 - `server.mjs`: servidor e autenticação.
 - `storage.mjs`: persistência Turso em produção e SQLite no desenvolvimento local.
 - `build.mjs`: verificação antes da publicação.

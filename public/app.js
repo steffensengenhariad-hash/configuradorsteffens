@@ -1,12 +1,46 @@
-import { MEASURES, INITIAL_DIMENSIONS, validateStandards } from './model.js';
+import { MEASURES, INITIAL_DIMENSIONS, validateStandards } from './model.js?v=2';
+import { createInitialModules, createInitialMethods } from './catalog.js?v=2';
+import { createLibraryController } from './library.js?v=2';
 
 const $ = selector => document.querySelector(selector);
 const all = selector => [...document.querySelectorAll(selector)];
 const format = value => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 10 }).format(value);
-let saved = null, draft = null, authenticated = false, selected = 'A', family = 'all', view = 'dimensions', saving = false, toastTimer, clearanceEditingId = null, draftGeneration = 0, refreshRequest = 0;
-const clone = value => JSON.parse(JSON.stringify(value));
-const isDirty = () => !!saved && !!draft && JSON.stringify([draft.dimensions, draft.clearances]) !== JSON.stringify([saved.dimensions, saved.clearances]);
+let saved = null, draft = null, authenticated = false, selected = 'A', family = 'all', view = 'catalog', saving = false, toastTimer, clearanceEditingId = null, draftGeneration = 0, refreshRequest = 0;
+const clone = value => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+const fields = ['dimensions','clearances','modules','methods'];
+const isDirty = () => !!saved && !!draft && JSON.stringify(fields.map(key => draft[key])) !== JSON.stringify(fields.map(key => saved[key]));
 const data = () => authenticated && draft ? draft : saved;
+const initialLibrary = { dimensions: INITIAL_DIMENSIONS, clearances: [], modules: createInitialModules(), methods: createInitialMethods() };
+const library = createLibraryController({
+  getData: () => data() || initialLibrary,
+  canEdit: () => authenticated && !saving && !!saved,
+  isSaving: () => saving,
+  onChange: mutator => { if (!authenticated || saving || !draft) return false; mutator(draft); draftGeneration++; renderDirty(); return true; },
+  requestEdit: () => $('#edit-button').click(),
+  notice, confirmAction,
+  onNavigate: next => setView(next),
+});
+
+function mergeChanges(before, local, latest) {
+  if (JSON.stringify(before) === JSON.stringify(local)) return clone(latest);
+  if (Array.isArray(local) && Array.isArray(before) && Array.isArray(latest)) {
+    const byId = rows => new Map(rows.map(row => [row.id, row]));
+    const original = byId(before), edited = byId(local), current = byId(latest);
+    const result = [];
+    for (const id of new Set([...latest.map(row => row.id), ...local.map(row => row.id)])) {
+      if (original.has(id) && !edited.has(id)) continue;
+      if (!edited.has(id)) { if (current.has(id)) result.push(clone(current.get(id))); continue; }
+      if (!original.has(id)) { result.push(clone(edited.get(id))); continue; }
+      const merged = mergeChanges(original.get(id), edited.get(id), current.get(id));
+      if (merged !== undefined) result.push(merged);
+    }
+    return result;
+  }
+  if (before && local && latest && [before,local,latest].every(value => typeof value === 'object' && !Array.isArray(value))) {
+    return Object.fromEntries([...new Set([...Object.keys(latest),...Object.keys(local)])].map(key => [key,mergeChanges(before[key],local[key],latest[key])]));
+  }
+  return clone(local);
+}
 
 async function api(path, options = {}) {
   const res = await fetch(path, { credentials: 'same-origin', ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } });
@@ -24,8 +58,11 @@ function confirmAction(title, description, label, action) {
 function setView(next) {
   view = next;
   $('#dimensions-view').hidden = view !== 'dimensions'; $('#clearances-view').hidden = view !== 'clearances';
-  all('[data-view]').forEach(button => { const active = button.dataset.view === view; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
+  $('#library-view').hidden = ['dimensions','clearances'].includes(view);
+  all('.primary-nav [data-view]').forEach(button => { const active = button.dataset.view === view; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
   document.querySelector('.family-caption').hidden = view !== 'dimensions'; document.querySelector('.family-nav').hidden = view !== 'dimensions';
+  document.querySelector('.environment-caption').hidden = ['dimensions','clearances'].includes(view); $('#environment-nav').hidden = ['dimensions','clearances'].includes(view);
+  if (!$('#library-view').hidden) library.setView(next);
 }
 function setFamily(next) {
   family = next; setView('dimensions');
@@ -157,13 +194,14 @@ function renderDirty() {
   all('#add-clearance, #import-button, #logout-button, #refresh-button, #clearance-list button, #clearance-form button').forEach(button => button.disabled = saving);
 }
 function render() {
+  document.body.classList.toggle('editing-mode', authenticated);
   $('#mode-badge').classList.toggle('editing',authenticated);
   $('#mode-badge').textContent = authenticated ? '✎ Edição liberada' : '◉ Modo consulta';
   $('#edit-button').hidden = authenticated; $('#edit-button').disabled = !saved;
   $('#logout-button').hidden = !authenticated; $('#import-button').hidden = !authenticated; $('#export-button').disabled = !saved;
   $('#revision-label').textContent = saved ? `Padrão geral · revisão ${saved.revision}` : 'Carregando padrão…';
   $('#updated-label').textContent = saved?.updatedAt ? `Atualizado em ${new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(saved.updatedAt))}` : 'Base inicial da referência · sem alterações salvas';
-  renderMeasures(); renderDiagram(); renderDetail(); renderClearances(); renderDirty();
+  renderMeasures(); renderDiagram(); renderDetail(); renderClearances(); renderDirty(); library.render();
 }
 function openClearance(id = null) {
   if (saving || !authenticated) return;
@@ -174,23 +212,18 @@ function openClearance(id = null) {
 }
 async function save() {
   if (saving || !authenticated) return;
-  try { validateStandards(draft); } catch (error) { notice(error.message); return; }
-  saving = true; renderDirty(); renderMeasures(); notice('');
+  let valid;
+  try { valid = validateStandards(draft, { existing:saved }); } catch (error) { notice(error.message); return; }
+  saving = true; renderDirty(); renderMeasures(); library.render(); notice('');
   try {
-    const result = await api('/api/standards', { method:'PUT',body:JSON.stringify({ revision:saved.revision, dimensions:draft.dimensions, clearances:draft.clearances }) });
+    const result = await api('/api/standards', { method:'PUT',body:JSON.stringify({ revision:saved.revision, ...valid }) });
     saved = result; draft = clone(result); toast('Padrão salvo. Os valores já estão disponíveis para todos.');
   } catch (error) {
     notice(error.message);
     if (error.status === 409 && error.current) {
       const local = clone(draft), original = saved, latest = error.current;
       saved = latest; draft = clone(latest);
-      for (const m of MEASURES) if (local.dimensions[m.id] !== original.dimensions[m.id]) draft.dimensions[m.id] = local.dimensions[m.id];
-      const ids = new Set([...original.clearances.map(r => r.id), ...local.clearances.map(r => r.id)]);
-      for (const id of ids) {
-        const before = original.clearances.find(r => r.id === id), edited = local.clearances.find(r => r.id === id);
-        if (JSON.stringify(before) === JSON.stringify(edited)) continue;
-        draft.clearances = draft.clearances.filter(r => r.id !== id); if (edited) draft.clearances.push(edited);
-      }
+      for (const key of fields) draft[key] = mergeChanges(original[key], local[key], latest[key]);
       draftGeneration++;
       notice('O padrão mudou em outra sessão. Suas alterações foram preservadas sobre a versão mais recente. Confira os valores e salve novamente.');
     }
@@ -213,7 +246,8 @@ function download() {
   link.href = url; link.download = `steffens-padrao-produtivo-r${saved.revision}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
   toast('Arquivo do padrão salvo exportado.');
 }
-all('[data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
+all('.primary-nav [data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
+$('#library-home').onclick = () => setView('catalog');
 all('[data-family]').forEach(button => button.onclick = () => setFamily(button.dataset.family));
 all('[data-close]').forEach(button => button.onclick = () => document.getElementById(button.dataset.close).close());
 $('#overview-button').onclick = () => setFamily('all');
@@ -245,9 +279,9 @@ $('#import-button').onclick = () => $('#import-file').click();
 $('#import-file').onchange = async event => {
   const file = event.target.files[0]; if (!file) return;
   try {
-    if (file.size>65536) throw new Error('O arquivo excede o tamanho permitido.');
-    const incoming = JSON.parse(await file.text()); if (incoming.unit !== 'cm' || incoming.schemaVersion !== 1) throw new Error('Selecione um arquivo do configurador Steffens em centímetros.');
-    const valid = validateStandards(incoming);
+    if (file.size>2097152) throw new Error('O arquivo excede o tamanho permitido (2 MB).');
+    const incoming = JSON.parse(await file.text()); if (incoming.unit !== 'cm' || ![1,2].includes(incoming.schemaVersion)) throw new Error('Selecione um arquivo do configurador Steffens em centímetros.');
+    const valid = validateStandards(incoming, {existing:saved});
     if (saving || !authenticated) return;
     confirmAction('Importar este padrão?', 'As medidas do arquivo substituirão a edição atual. A equipe verá os novos valores somente depois de salvar.', 'Importar', () => { if (saving || !authenticated) return; draftGeneration++; draft={...clone(saved),...valid}; render(); notice('Arquivo importado para edição. Confira as medidas e salve para publicar o padrão.'); });
   } catch(error) { notice(error instanceof SyntaxError ? 'O arquivo não contém uma configuração JSON válida.' : error.message); }
@@ -256,7 +290,7 @@ $('#import-file').onchange = async event => {
 window.addEventListener('beforeunload',event => { if (isDirty()) { event.preventDefault(); event.returnValue=''; } });
 document.addEventListener('visibilitychange',() => { if (!document.hidden && !authenticated) void refresh(); });
 setInterval(() => { if (!document.hidden && !authenticated) void refresh(); },30000);
-render();
+setView('catalog'); render();
 try {
   const [standards, auth] = await Promise.all([api('/api/standards'),api('/api/session')]);
   saved=standards; draft=clone(saved); authenticated=auth.authenticated; render();
