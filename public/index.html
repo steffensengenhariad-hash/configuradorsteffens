@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14243a">
+  <meta name="description" content="Consulta de dimensões e folgas do padrão produtivo Steffens Móveis. Edição protegida e medidas em centímetros.">
+  <title>Configurador de Dimensões Steffens Móveis | Padrão Produtivo</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Ir para o configurador</a>
+  <aside class="sidebar" aria-label="Biblioteca de padrões">
+    <div class="brand"><img src="/favicon.svg" alt="" width="42" height="42"><div><strong>STEFFENS</strong><span>MÓVEIS</span></div></div>
+    <div class="sidebar-caption">BIBLIOTECA PRODUTIVA</div>
+    <nav class="primary-nav" aria-label="Padrões">
+      <button class="nav-button active" data-view="dimensions" aria-current="page"><span class="nav-icon">▦</span><span>Dimensões externas<small>Módulos e componentes</small></span></button>
+      <button class="nav-button" data-view="clearances"><span class="nav-icon">↔</span><span>Folgas padrão<small>Encaixes e aplicações</small></span></button>
+    </nav>
+    <div class="sidebar-caption family-caption">TIPOS DE MÓDULO</div>
+    <nav class="family-nav" aria-label="Selecionar módulo">
+      <button data-family="all" class="active">Visão geral<span>11</span></button>
+      <button data-family="balcao">Balcões e rodapés<span>A · B · H · I · J</span></button>
+      <button data-family="armario">Armários<span>C · D</span></button>
+      <button data-family="superior">Superiores<span>E · F</span></button>
+      <button data-family="gaveteiro">Gaveteiros volantes<span>G</span></button>
+      <button data-family="moldura">Moldura de engrossamento<span>K</span></button>
+    </nav>
+    <div class="sidebar-bottom"><span class="access-icon">◈</span><div><strong>Padrão produtivo</strong><span>Consulta aberta · edição protegida</span></div></div>
+  </aside>
+  <div class="shell">
+    <header class="topbar"><div class="breadcrumb">Steffens Móveis <span>/</span> Padrão produtivo</div><div class="topbar-actions"><span class="unit-badge">Unidade: <strong>cm</strong></span><button id="edit-button" class="button dark"><span aria-hidden="true">✎</span> Editar medidas</button><button id="logout-button" class="button quiet" hidden>Sair</button></div></header>
+    <main id="content" tabindex="-1">
+      <div class="page-heading"><div><div class="eyebrow">PADRÃO PRODUTIVO</div><h1>Configurador de Dimensões<br><span>Steffens Móveis</span></h1></div><div class="mode-badge" id="mode-badge"><span aria-hidden="true">◉</span> Modo consulta</div></div>
+      <div class="notice" id="notice" hidden role="status"></div>
+      <section id="dimensions-view" aria-label="Dimensões externas">
+        <div class="workspace">
+          <section class="visual-panel panel">
+            <div class="panel-heading"><div><h2>Dimensões externas</h2><p>Selecione uma cota para consultar a medida.</p></div><span class="subtle-tag">MÓDULOS</span></div>
+            <div class="visual-toolbar"><div class="view-label"><span class="cube-icon" aria-hidden="true">◇</span> Vista esquemática</div><button id="overview-button" class="button quiet small">Ver todos os módulos</button></div>
+            <div class="drawing-wrap" id="drawing-wrap"><svg id="diagram" viewBox="0 0 900 410" role="group" aria-label="Ilustrações dos módulos com cotas A a K"></svg></div>
+            <div class="drawing-caption"><span><i aria-hidden="true"></i> Cotas interativas</span><span class="drawing-hint">Deslize para ver todos os módulos</span><span>Ilustrações sem escala · valores em cm</span></div>
+            <div class="selected-detail" id="selected-detail"></div>
+            <div class="reference-note"><span aria-hidden="true">ⓘ</span><p>Valores iniciais transcritos da referência enviada. Os padrões e as folgas podem ser ajustados pelo responsável.</p></div>
+          </section>
+          <section class="measure-panel panel" aria-label="Lista de medidas">
+            <div class="panel-heading"><div><h2>Medidas do padrão</h2><p id="measure-count">11 dimensões · centímetros</p></div><span class="subtle-tag">A — K</span></div>
+            <div class="measure-list" id="measure-list"></div>
+            <div class="measure-footer"><span aria-hidden="true">▤</span> Medidas compartilhadas com a equipe</div>
+          </section>
+        </div>
+      </section>
+      <section id="clearances-view" class="panel clearances-panel" hidden aria-label="Folgas padrão">
+        <div class="panel-heading"><div><h2>Folgas padrão</h2><p>Medidas de folga por aplicação, em centímetros.</p></div><button id="add-clearance" class="button dark" hidden>+ Adicionar folga</button></div>
+        <div id="clearance-list"></div>
+      </section>
+      <div class="save-bar" id="save-bar" hidden><div><strong id="draft-status">Edição do padrão</strong><span>Ao salvar, os valores ficarão disponíveis para todos.</span></div><div class="save-actions"><button id="discard-button" class="button secondary">Descartar alterações</button><button id="save-button" class="button primary">Salvar padrão</button></div></div>
+      <footer class="page-footer"><div><strong id="revision-label">Carregando padrão…</strong><span id="updated-label">Conectando à biblioteca produtiva</span></div><div class="footer-actions"><button id="refresh-button" class="button quiet small">Atualizar consulta</button><button id="export-button" class="button quiet small" disabled>Exportar padrão</button><button id="import-button" class="button quiet small" hidden>Importar padrão</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></footer>
+    </main>
+  </div>
+  <dialog id="login-dialog"><form id="login-form"><div class="dialog-heading"><div><div class="eyebrow">ACESSO DO RESPONSÁVEL</div><h2>Editar o padrão produtivo</h2></div><button type="button" class="icon-button" data-close="login-dialog" aria-label="Fechar">×</button></div><p class="dialog-intro">Entre para alterar dimensões e cadastrar folgas. A consulta permanece disponível para todos.</p><label class="form-field">Usuário<input id="username" name="username" autocomplete="username" maxlength="100" required></label><label class="form-field">Senha<input id="password" name="password" type="password" autocomplete="current-password" maxlength="512" required></label><p id="login-error" class="form-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button secondary" data-close="login-dialog">Cancelar</button><button id="login-submit" type="submit" class="button primary">Entrar e editar</button></div></form></dialog>
+  <dialog id="confirm-dialog"><div class="dialog-heading"><h2 id="confirm-title">Descartar alterações?</h2><button class="icon-button" data-close="confirm-dialog" aria-label="Fechar">×</button></div><p id="confirm-description" class="dialog-intro">As alterações ainda não salvas serão descartadas.</p><div class="dialog-actions"><button class="button secondary" data-close="confirm-dialog">Cancelar</button><button id="confirm-action" class="button danger">Descartar</button></div></dialog>
+  <dialog id="clearance-dialog"><form id="clearance-form"><div class="dialog-heading"><div><div class="eyebrow">FOLGAS PADRÃO</div><h2 id="clearance-title">Adicionar folga</h2></div><button type="button" class="icon-button" data-close="clearance-dialog" aria-label="Fechar">×</button></div><label class="form-field">Aplicação<input id="clearance-name" maxlength="100" placeholder="Ex.: folga entre frentes" required></label><label class="form-field">Folga (cm)<input id="clearance-value" type="number" min="0" step="any" placeholder="Informe a medida" required></label><label class="form-field">Observação <span class="optional">(opcional)</span><textarea id="clearance-note" maxlength="300" rows="3" placeholder="Onde e como aplicar esta folga"></textarea></label><p class="dialog-intro compact">A folga será incluída ao salvar o padrão.</p><div class="dialog-actions"><button type="button" class="button secondary" data-close="clearance-dialog">Cancelar</button><button type="submit" class="button primary">Incluir na edição</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

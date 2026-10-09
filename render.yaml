@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: configurador-dimensoes-steffens
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: TURSO_DATABASE_URL
+        value: libsql://configuradorsteffens-steffensengenhariad-hash.aws-ap-northeast-1.turso.io
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
